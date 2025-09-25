@@ -8,11 +8,9 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // TAREAS CORREGIDAS (sin "Flejar" independiente)
     const ordenTareas = ["Flejar+Paquete", "Paquete", "Bobina", "Cuna"];
     const tareasAbrev = {"Flejar+Paquete": "F+P", "Paquete": "P", "Bobina": "B", "Cuna": "C"};
     
-    // Tiempos estimados por tarea (en minutos)
     const tiemposPorTarea = {
         "Flejar+Paquete": 6,
         "Paquete": 3,
@@ -45,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return coloresPuestos[index % coloresPuestos.length];
     }
 
-    // CORRECCIÓN: Ahora las vistas se ocultan/muestran correctamente
     function cambiarModo(modo) {
         modoActual = modo;
         document.querySelectorAll('.modo-toggle button').forEach(btn => btn.classList.remove('modo-activo'));
@@ -112,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // FUNCIÓN ACTUALIZADA para incluir el cálculo decimal
     function calcularDistribucionHoras() {
         const registrosHoy = log.filter(r => r.fecha === getFechaHoy());
         const contadorPorPuesto = {};
@@ -136,14 +134,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             const proporcion = tiempoTotalEstimado > 0 ? tiempoPuesto / tiempoTotalEstimado : 0;
-            const minutosAsignados = Math.round(JORNADA_TOTAL_MINUTOS * proporcion);
+            const minutosAsignados = JORNADA_TOTAL_MINUTOS * proporcion;
             const horas = Math.floor(minutosAsignados / 60);
-            const minutos = minutosAsignados % 60;
+            const minutos = Math.round(minutosAsignados % 60);
+            
+            // CÁLCULO DECIMAL
+            const horasDecimales = minutosAsignados / 60;
             
             distribucion.push({
                 puesto,
                 detalles,
                 tiempoEstimado: `${horas}h ${minutos}min`,
+                tiempoDecimal: horasDecimales.toFixed(2), // Formateado a 2 decimales
                 color: getColorPuesto(puesto)
             });
         });
@@ -151,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return distribucion;
     }
     
+    // FUNCIÓN ACTUALIZADA para mostrar la nueva columna
     function renderDistribucionHoras() {
         const distribucion = calcularDistribucionHoras();
         let html = '';
@@ -158,15 +161,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (distribucion.length === 0) {
             html = '<p style="text-align: center; color: var(--text-color);">No hay registros para calcular distribución</p>';
         } else {
-            html = `<table class="horas-tabla"><thead><tr><th>Puesto</th><th>Tareas realizadas</th><th>Tiempo estimado</th></tr></thead><tbody>
-                        ${distribucion.map(item => `<tr>
-                                <td><span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:2px; margin-right:8px;"></span>Puesto ${item.puesto}</td>
-                                <td>${item.detalles}</td>
-                                <td><strong>${item.tiempoEstimado}</strong></td>
-                            </tr>`).join('')}
-                    </tbody></table>
+            html = `<table class="horas-tabla">
+                        <thead>
+                            <tr>
+                                <th>Puesto</th>
+                                <th>Tareas</th>
+                                <th>Tiempo Estimado</th>
+                                <th>Registro (Decimal)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${distribucion.map(item => `
+                                <tr>
+                                    <td><span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:2px; margin-right:8px;"></span>Puesto ${item.puesto}</td>
+                                    <td>${item.detalles}</td>
+                                    <td>${item.tiempoEstimado}</td>
+                                    <td><strong>${item.tiempoDecimal.replace('.', ',')}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
                 <div style="margin-top: 15px; padding: 10px; background: var(--card-bg); border-radius: 5px; font-size: 12px; color: var(--text-color);">
-                    💡 <strong>Nota:</strong> Esta distribución es estimativa.
+                    💡 <strong>Nota:</strong> Esta distribución es una estimación.
                 </div>`;
         }
         
@@ -236,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`).join('');
     }
 
-    // El resto del código (exponer funciones, theme toggle, event listeners) sigue igual que antes
     window.addRegistroGlobal = addRegistro;
     window.quitarPuestoGlobal = quitarPuesto;
     window.eliminarRegistroGlobal = eliminarRegistro;
