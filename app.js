@@ -8,14 +8,14 @@ if ('serviceWorker' in navigator) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // TAREAS Y ORDEN DE COLUMNAS DEFINIDO
-    const ordenTareas = ["Flejar+Paquete", "Paquete", "Flejar", "Bobina", "Cuna"];
-    const tareasAbrev = {"Flejar+Paquete": "F+P", "Paquete": "P", "Flejar": "F", "Bobina": "B", "Cuna": "C"};
+    // TAREAS CORREGIDAS (sin "Flejar" independiente)
+    const ordenTareas = ["Flejar+Paquete", "Paquete", "Bobina", "Cuna"];
+    const tareasAbrev = {"Flejar+Paquete": "F+P", "Paquete": "P", "Bobina": "B", "Cuna": "C"};
     
+    // Tiempos estimados por tarea (en minutos)
     const tiemposPorTarea = {
         "Flejar+Paquete": 6,
         "Paquete": 3,
-        "Flejar": 2,
         "Bobina": 8,
         "Cuna": 5
     };
@@ -45,13 +45,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return coloresPuestos[index % coloresPuestos.length];
     }
 
+    // CORRECCIÓN: Ahora las vistas se ocultan/muestran correctamente
     function cambiarModo(modo) {
         modoActual = modo;
         document.querySelectorAll('.modo-toggle button').forEach(btn => btn.classList.remove('modo-activo'));
         document.getElementById(`btn-modo-${modo}`).classList.add('modo-activo');
         
-        document.querySelectorAll('.vista-container').forEach(vista => vista.style.display = 'none');
-        document.getElementById(`vista-${modo}`).style.display = 'block';
+        ['actual', 'historial', 'horas'].forEach(vistaId => {
+            const vista = document.getElementById(`vista-${vistaId}`);
+            if (vista) vista.style.display = (vistaId === modo) ? 'block' : 'none';
+        });
         
         if (modo === 'historial') renderHistorial();
         if (modo === 'horas') renderDistribucionHoras();
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let numero = document.getElementById('nuevoPuesto').value.trim();
         if(numero && !puestos.some(p => p === numero)) {
             puestos.push(numero);
-            puestos.sort((a, b) => parseInt(a) - parseInt(b)); // Ordenar puestos numéricamente
+            puestos.sort((a, b) => parseInt(a) - parseInt(b));
             savePuestos();
             renderPuestos();
             if ('vibrate' in navigator) navigator.vibrate(50);
@@ -175,10 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const contadorPorPuesto = {};
         
         registrosHoy.forEach(r => {
-            if (!contadorPorPuesto[r.puesto]) contadorPorPuesto[r.puesto] = {};
-            ordenTareas.forEach(t => {
-                if (!contadorPorPuesto[r.puesto][t]) contadorPorPuesto[r.puesto][t] = 0;
-            });
+            if (!contadorPorPuesto[r.puesto]) {
+                contadorPorPuesto[r.puesto] = {};
+                ordenTareas.forEach(t => contadorPorPuesto[r.puesto][t] = 0);
+            }
             contadorPorPuesto[r.puesto][r.tarea]++;
         });
 
@@ -233,12 +236,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`).join('');
     }
 
-    // Exponer funciones globalmente
+    // El resto del código (exponer funciones, theme toggle, event listeners) sigue igual que antes
     window.addRegistroGlobal = addRegistro;
     window.quitarPuestoGlobal = quitarPuesto;
     window.eliminarRegistroGlobal = eliminarRegistro;
 
-    // Theme Toggle
     const themeToggle = document.getElementById('theme-toggle');
     const currentTheme = localStorage.getItem('theme');
     if (currentTheme) {
@@ -252,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('theme', theme);
     });
     
-    // Event Listeners
     ['actual', 'historial', 'horas'].forEach(modo => {
         document.getElementById(`btn-modo-${modo}`).addEventListener('click', () => cambiarModo(modo));
     });
@@ -263,7 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') addPuesto();
     });
 
-    // Initialize app
     renderPuestos();
     renderLog();
     renderDashboard();
