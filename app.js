@@ -7,38 +7,19 @@ if ('serviceWorker' in navigator) {
     });
 }
 
-// PWA Install Prompt
-let deferredPrompt;
-const installBanner = document.getElementById('install-banner');
-const installBtn = document.getElementById('install-btn');
-const dismissBtn = document.getElementById('dismiss-btn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBanner.style.display = 'block';
-});
-
-installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            console.log('Usuario aceptó la instalación');
-        }
-        deferredPrompt = null;
-        installBanner.style.display = 'none';
-    }
-});
-
-dismissBtn.addEventListener('click', () => {
-    installBanner.style.display = 'none';
-});
-
-// App Logic (mismo que antes pero mejorado para PWA)
 document.addEventListener('DOMContentLoaded', () => {
-    const tareas = ["Flejar", "Paquete", "Bobina", "Cuna"];
-    const tareasAbrev = {"Flejar": "F", "Paquete": "P", "Bobina": "B", "Cuna": "C"};
+    // NUEVAS TAREAS ACTUALIZADAS
+    const tareas = ["Paquete", "Bobina", "Cuna", "Flejar+Paquete"];
+    const tareasAbrev = {"Paquete": "P", "Bobina": "B", "Cuna": "C", "Flejar+Paquete": "F+P"};
+    
+    // Tiempos estimados por tarea (en minutos)
+    const tiemposPorTarea = {
+        "Paquete": 3,
+        "Bobina": 8,
+        "Cuna": 5,
+        "Flejar+Paquete": 6
+    };
+    
     const coloresPuestos = [
         '#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6',
         '#1abc9c', '#e67e22', '#8e44ad', '#16a085', '#27ae60'
@@ -47,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let puestos = JSON.parse(localStorage.getItem('puestos') || "[]");
     let log = JSON.parse(localStorage.getItem('registroTareas') || "[]");
     let modoActual = 'actual';
+    
+    const JORNADA_TOTAL_MINUTOS = 7 * 60 + 45; // 7h 45min
 
     function savePuestos() { localStorage.setItem('puestos', JSON.stringify(puestos)); }
     function saveLog() { localStorage.setItem('registroTareas', JSON.stringify(log)); }
@@ -66,18 +49,22 @@ document.addEventListener('DOMContentLoaded', () => {
         modoActual = modo;
         document.getElementById('btn-modo-actual').classList.toggle('modo-activo', modo === 'actual');
         document.getElementById('btn-modo-historial').classList.toggle('modo-activo', modo === 'historial');
+        document.getElementById('btn-modo-horas').classList.toggle('modo-activo', modo === 'horas');
+        
         document.getElementById('vista-actual').style.display = (modo === 'actual') ? 'block' : 'none';
         document.getElementById('vista-historial').style.display = (modo === 'historial') ? 'block' : 'none';
+        document.getElementById('vista-horas').style.display = (modo === 'horas') ? 'block' : 'none';
+        
         if (modo === 'historial') renderHistorial();
+        if (modo === 'horas') renderDistribucionHoras();
     }
 
     function addPuesto() {
-        let nombre = document.getElementById('nuevoPuesto').value.trim();
-        if(nombre && !puestos.some(p => p === nombre)) {
-            puestos.push(nombre);
+        let numero = document.getElementById('nuevoPuesto').value.trim();
+        if(numero && !puestos.some(p => p === numero)) {
+            puestos.push(numero);
             savePuestos();
             renderPuestos();
-            // Vibration feedback en móviles
             if ('vibrate' in navigator) navigator.vibrate(50);
         }
         document.getElementById('nuevoPuesto').value = "";
@@ -101,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
         saveLog();
         renderLog();
         renderDashboard();
-        // Vibration feedback
         if ('vibrate' in navigator) navigator.vibrate(100);
     }
     
@@ -123,6 +109,89 @@ document.addEventListener('DOMContentLoaded', () => {
             renderLog();
             renderDashboard();
         }
+    }
+    
+    // NUEVA FUNCIÓN: Calcular distribución de horas
+    function calcularDistribucionHoras() {
+        const registrosHoy = log.filter(r => r.fecha === getFechaHoy());
+        const contadorPorPuesto = {};
+        let tiempoTotalEstimado = 0;
+        
+        // Contar tareas por puesto y calcular tiempo total
+        registrosHoy.forEach(registro => {
+            if (!contadorPorPuesto[registro.puesto]) {
+                contadorPorPuesto[registro.puesto] = {};
+            }
+            if (!contadorPorPuesto[registro.puesto][registro.tarea]) {
+                contadorPorPuesto[registro.puesto][registro.tarea] = 0;
+            }
+            contadorPorPuesto[registro.puesto][registro.tarea]++;
+            tiempoTotalEstimado += tiemposPorTarea[registro.tarea] || 5;
+        });
+        
+        // Calcular proporción y distribuir las 7h 45min
+        const distribucion = [];
+        Object.keys(contadorPorPuesto).forEach(puesto => {
+            let tiempoPuesto = 0;
+            let detalles = [];
+            
+            Object.keys(contadorPorPuesto[puesto]).forEach(tarea => {
+                const cantidad = contadorPorPuesto[puesto][tarea];
+                const tiempoTarea = cantidad * (tiemposPorTarea[tarea] || 5);
+                tiempoPuesto += tiempoTarea;
+                detalles.push(`${tareasAbrev[tarea]}×${cantidad}`);
+            });
+            
+            // Calcular proporción de la jornada
+            const proporcion = tiempoTotalEstimado > 0 ? tiempoPuesto / tiempoTotalEstimado : 0;
+            const minutosAsignados = Math.round(JORNADA_TOTAL_MINUTOS * proporcion);
+            const horas = Math.floor(minutosAsignados / 60);
+            const minutos = minutosAsignados % 60;
+            
+            distribucion.push({
+                puesto,
+                detalles: detalles.join(', '),
+                tiempoEstimado: `${horas}h ${minutos}min`,
+                color: getColorPuesto(puesto)
+            });
+        });
+        
+        return distribucion;
+    }
+    
+    function renderDistribucionHoras() {
+        const distribucion = calcularDistribucionHoras();
+        let html = '';
+        
+        if (distribucion.length === 0) {
+            html = '<p style="text-align: center; color: var(--text-color);">No hay registros para calcular distribución</p>';
+        } else {
+            html = `
+                <table class="horas-tabla">
+                    <thead>
+                        <tr>
+                            <th>Puesto</th>
+                            <th>Tareas realizadas</th>
+                            <th>Tiempo estimado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${distribucion.map(item => `
+                            <tr>
+                                <td><span style="display:inline-block; width:12px; height:12px; background:${item.color}; border-radius:2px; margin-right:8px;"></span>Puesto ${item.puesto}</td>
+                                <td>${item.detalles}</td>
+                                <td><strong>${item.tiempoEstimado}</strong></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <div style="margin-top: 15px; padding: 10px; background: var(--card-bg); border-radius: 5px; font-size: 12px; color: var(--text-color);">
+                    💡 <strong>Nota:</strong> Esta distribución es estimativa basada en: Paquete=3min, Bobina=8min, Cuna=5min, Flejar+Paquete=6min por tarea.
+                </div>
+            `;
+        }
+        
+        document.getElementById('horas-contenido').innerHTML = html;
     }
     
     function agruparPorFecha(registros) {
@@ -151,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="dia-header"><span>${fechaFormateada}</span><span class="dia-stats">${stats.totalTareas} tareas</span></div>
                         <div class="dia-contenido">
                             <div class="dia-dashboard">${renderDashboardDia(registrosDia)}</div>
-                            <div class="dia-registros">${registrosDia.map(reg => `<div class="registro"><span class="registro-texto"><span class="registro-puesto" style="background-color: ${getColorPuesto(reg.puesto)}">${reg.puesto}</span> ${reg.hora} — ${tareasAbrev[reg.tarea] || reg.tarea}</span><button class="boton-eliminar" onclick="window.eliminarRegistroGlobal(${reg.id})">✕</button></div>`).join('')}</div>
+                            <div class="dia-registros">${registrosDia.map(reg => `<div class="registro"><span class="registro-texto"><span class="registro-puesto" style="background-color: ${getColorPuesto(reg.puesto)}">P${reg.puesto}</span> ${reg.hora} — ${tareasAbrev[reg.tarea] || reg.tarea}</span><button class="boton-eliminar" onclick="window.eliminarRegistroGlobal(${reg.id})">✕</button></div>`).join('')}</div>
                         </div>
                     </div>`;
             });
@@ -169,32 +238,49 @@ document.addEventListener('DOMContentLoaded', () => {
         let html = Object.keys(contadorPorPuesto).map(puesto => {
             const color = getColorPuesto(puesto);
             let badges = Object.keys(contadorPorPuesto[puesto]).map(tarea => `<span class="tarea-badge">${tareasAbrev[tarea] || tarea} ${contadorPorPuesto[puesto][tarea]}</span>`).join('');
-            return `<div class="puesto-contador" style="background-color: ${color}"><div class="puesto-nombre">${puesto}</div><div class="tareas-contadores">${badges}</div></div>`;
+            return `<div class="puesto-contador" style="background-color: ${color}"><div class="puesto-nombre">P${puesto}</div><div class="tareas-contadores">${badges}</div></div>`;
         }).join('');
         return html || '<p style="color: var(--text-color); text-align: center;">No hay registros para este día</p>';
     }
     
     function renderDashboard() {
-        document.getElementById('dashboard-contadores').innerHTML = renderDashboardDia(log.filter(r => r.fecha === getFechaHoy()));
+        const registrosHoy = log.filter(r => r.fecha === getFechaHoy());
+        document.getElementById('dashboard-contadores').innerHTML = renderDashboardDia(registrosHoy);
     }
     
     function renderPuestos() {
         document.getElementById('puestosContainer').innerHTML = puestos.map((puesto, idx) => {
-            const selectId = `select-${idx}`;
+            // Calcular tiempo estimado para este puesto hoy
+            const registrosHoy = log.filter(r => r.fecha === getFechaHoy() && r.puesto === puesto);
+            let tiempoTotal = 0;
+            registrosHoy.forEach(r => tiempoTotal += tiemposPorTarea[r.tarea] || 5);
+            const horas = Math.floor(tiempoTotal / 60);
+            const minutos = tiempoTotal % 60;
+            const tiempoEstimado = tiempoTotal > 0 ? `≈ ${horas}h ${minutos}min` : '';
+            
             return `
                 <div class="puesto" style="border-left: 4px solid ${getColorPuesto(puesto)}">
-                    ${puesto}
-                    <select id="${selectId}" class="tarea-select">${tareas.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-                    <button class="boton-puesto" onclick="window.addRegistroGlobal('${puesto}', document.getElementById('${selectId}').value)">+</button>
-                    <button class="boton-quitar" onclick="window.quitarPuestoGlobal(${idx})">Quitar</button>
+                    <div class="puesto-header">
+                        <span>Puesto ${puesto}</span>
+                        <button class="boton-quitar" onclick="window.quitarPuestoGlobal(${idx})">Quitar</button>
+                    </div>
+                    <div class="tarea-buttons">
+                        ${tareas.map(tarea => `
+                            <button class="tarea-btn ${tarea === 'Flejar+Paquete' ? 'combo' : ''}" onclick="window.addRegistroGlobal('${puesto}', '${tarea}')">
+                                ${tareasAbrev[tarea]} ${tarea}
+                            </button>
+                        `).join('')}
+                    </div>
+                    ${tiempoEstimado ? `<div class="tiempo-estimado">${tiempoEstimado}</div>` : ''}
                 </div>`;
         }).join('');
     }
     
     function renderLog() {
-        document.getElementById('log').innerHTML = log.filter(r => r.fecha === getFechaHoy()).slice(0, 30).map(reg => `
+        const registrosHoy = log.filter(r => r.fecha === getFechaHoy()).slice(0, 30);
+        document.getElementById('log').innerHTML = registrosHoy.map(reg => `
             <div class="registro">
-                <span class="registro-texto"><span class="registro-puesto" style="background-color: ${getColorPuesto(reg.puesto)}">${reg.puesto}</span> ${reg.hora} — ${tareasAbrev[reg.tarea] || reg.tarea}</span>
+                <span class="registro-texto"><span class="registro-puesto" style="background-color: ${getColorPuesto(reg.puesto)}">P${reg.puesto}</span> ${reg.hora} — ${tareasAbrev[reg.tarea] || reg.tarea}</span>
                 <button class="boton-eliminar" onclick="window.eliminarRegistroGlobal(${reg.id})">✕</button>
             </div>
         `).join('');
@@ -222,6 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event Listeners
     document.getElementById('btn-modo-actual').addEventListener('click', () => cambiarModo('actual'));
     document.getElementById('btn-modo-historial').addEventListener('click', () => cambiarModo('historial'));
+    document.getElementById('btn-modo-horas').addEventListener('click', () => cambiarModo('horas'));
     document.getElementById('addPuestoBtn').addEventListener('click', addPuesto);
     document.getElementById('limpiarRegistrosBtn').addEventListener('click', limpiarTodosLosRegistros);
 
