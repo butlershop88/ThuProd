@@ -5,13 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Tareas de Apoyo</title>
     
-    <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3578e6">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Registro Tareas">
-    <link rel="apple-touch-icon" href="icon-192.png">
     
     <style>
         :root {
@@ -50,12 +46,9 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             transition: background-color 0.3s, color 0.3s;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
         }
         h2, h3 { color: var(--text-color); }
-        input[type="number"], input[type="text"] {
+        input[type="number"] {
             background-color: var(--input-bg);
             border: 1px solid var(--input-border);
             color: var(--text-color);
@@ -64,168 +57,66 @@
             width: 120px;
         }
         .puesto { 
-            margin-bottom: 20px; 
-            padding: 15px; 
-            border: 1px solid var(--card-border); 
-            border-radius: 7px;
-            background-color: var(--card-bg);
+            margin-bottom: 20px; padding: 15px; border: 1px solid var(--card-border); 
+            border-radius: 7px; background-color: var(--card-bg);
         }
-        .puesto-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .tarea-buttons {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        .tarea-btn {
-            background: var(--primary-btn-bg);
-            color: var(--btn-text-color);
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .tarea-btn.combo {
-            background: var(--success-btn-bg);
-        }
-        .boton-quitar { background: var(--danger-btn-bg); color: var(--btn-text-color); border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;}
-        .boton-eliminar { background: var(--danger-btn-bg); color: var(--btn-text-color); border: none; padding: 2px 6px; border-radius: 3px; margin-left: 10px; font-size: 12px; cursor: pointer;}
-        .boton-eliminar:hover { opacity: 0.8; }
-        .boton-limpiar { background: var(--secondary-btn-bg); color: var(--btn-text-color); border: none; padding: 6px 12px; border-radius: 4px; margin-bottom: 15px; cursor: pointer;}
-        .boton-historial { background: var(--info-btn-bg); color: var(--btn-text-color); border: none; padding: 6px 12px; border-radius: 4px; margin-left: 10px; cursor: pointer;}
-        .boton-horas { background: var(--success-btn-bg); color: var(--btn-text-color); border: none; padding: 6px 12px; border-radius: 4px; margin-left: 10px; cursor: pointer;}
-        
-        .dashboard { 
-            margin: 20px 0; 
-            padding: 15px; 
-            background: var(--card-bg);
-            border-radius: 8px; 
-            border: 1px solid var(--card-border);
-        }
-        .dashboard h3 { margin-top: 0; color: var(--text-color); font-size: 18px;}
-        .puesto-contador { margin: 8px 0; padding: 8px; border-radius: 5px; font-weight: bold; color: white; display: flex; align-items: center; gap: 15px;}
-        .puesto-nombre { min-width: 80px; }
-        .tareas-contadores { display: flex; gap: 10px; flex-wrap: wrap; }
-        .tarea-badge { background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 15px; font-size: 12px; white-space: nowrap;}
-        body.dark-mode .tarea-badge { background: rgba(255,255,255,0.2); }
-        
-        .tiempo-estimado {
-            font-size: 12px;
-            color: var(--text-color);
-            opacity: 0.7;
-            margin-top: 5px;
-        }
-        
-        .historial-container { display: none; margin-top: 20px; }
-        .horas-container { display: none; margin-top: 20px; }
-        .dia-grupo { margin-bottom: 20px; border: 1px solid var(--card-border); border-radius: 8px; overflow: hidden; }
-        .dia-header { background: var(--primary-btn-bg); color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .dia-stats { font-size: 12px; opacity: 0.9; }
-        .dia-contenido { padding: 15px; background: var(--card-bg); }
-        .dia-registros { max-height: 200px; overflow-y: auto; }
-        .modo-toggle { margin-bottom: 20px; }
-        .modo-toggle button { cursor: pointer; margin-right: 10px; }
-        .modo-activo { background: var(--success-btn-bg) !important; color: white !important; }
-        .registro { border-bottom: 1px solid var(--log-border); padding: 4px 0; display: flex; justify-content: space-between; align-items: center;}
-        .registro-puesto { font-weight: bold; padding: 2px 6px; border-radius: 3px; color: white; margin-right: 8px; font-size: 12px;}
-        
-        .horas-tabla {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-        .horas-tabla th, .horas-tabla td {
-            border: 1px solid var(--card-border);
-            padding: 8px;
-            text-align: left;
-        }
-        .horas-tabla th {
-            background: var(--card-bg);
-            font-weight: bold;
-        }
-        
-        #theme-toggle {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: var(--secondary-btn-bg);
-            color: var(--btn-text-color);
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .add-puesto-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .add-puesto-container button {
-            background: var(--primary-btn-bg);
-            color: var(--btn-text-color);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+        .puesto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-weight: bold; font-size: 16px; }
+        .tarea-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tarea-btn { background: var(--primary-btn-bg); color: var(--btn-text-color); border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .tarea-btn.combo { background: var(--success-btn-bg); }
+        .boton-quitar { background: var(--danger-btn-bg); color: var(--btn-text-color); border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .boton-eliminar { background: var(--danger-btn-bg); color: var(--btn-text-color); border: none; padding: 2px 6px; border-radius: 3px; margin-left: 10px; font-size: 12px; cursor: pointer; }
+        .boton-limpiar, .boton-historial, .boton-horas { color: var(--btn-text-color); border: none; padding: 6px 12px; border-radius: 4px; margin-bottom: 15px; cursor: pointer; }
+        .boton-limpiar { background: var(--secondary-btn-bg); }
+        .boton-historial { background: var(--info-btn-bg); }
+        .boton-horas { background: var(--success-btn-bg); }
+        .dashboard { margin: 20px 0; padding: 15px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--card-border); }
+        .dashboard h3 { margin-top: 0; }
+        .horas-tabla { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .horas-tabla th, .horas-tabla td { border: 1px solid var(--card-border); padding: 8px; text-align: left; }
+        .horas-tabla th { background: var(--card-bg); }
+        .vista-container { display: none; }
+        #vista-actual { display: block; }
+        .modo-toggle button { margin-right: 10px; }
+        .modo-activo { border: 2px solid #fff !important; box-shadow: 0 0 5px var(--success-btn-bg); }
+        .registro { border-bottom: 1px solid var(--log-border); padding: 4px 0; display: flex; justify-content: space-between; align-items: center; }
+        .registro-puesto { font-weight: bold; padding: 2px 6px; border-radius: 3px; color: white; margin-right: 8px; font-size: 12px; }
+        #theme-toggle { position: fixed; top: 10px; right: 10px; background: var(--secondary-btn-bg); color: var(--btn-text-color); border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 20px; cursor: pointer; z-index: 1000; }
+        .add-puesto-container { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        .add-puesto-container button { background: var(--primary-btn-bg); color: var(--btn-text-color); border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
     <button id="theme-toggle">🌙</button>
-
     <h2>📋 Registro de tareas</h2>
-    
     <div class="modo-toggle">
         <button id="btn-modo-actual" class="boton-limpiar modo-activo">Día Actual</button>
         <button id="btn-modo-historial" class="boton-historial">Historial</button>
         <button id="btn-modo-horas" class="boton-horas">Distribución Horas</button>
     </div>
-    
-    <div id="vista-actual">
+    <div id="vista-actual" class="vista-container">
         <div class="add-puesto-container">
             <span>Puesto nº:</span>
             <input type="number" id="nuevoPuesto" placeholder="23" min="1" max="999">
-            <button id="addPuestoBtn">Añadir Puesto</button>
+            <button id="addPuestoBtn">Añadir</button>
         </div>
         <div id="puestosContainer"></div>
-        
         <div class="dashboard">
             <h3>📊 Resumen del día</h3>
             <div id="dashboard-contadores"></div>
         </div>
-        
         <h3>Registros de hoy</h3>
-        <button id="limpiarRegistrosBtn" class="boton-limpiar">Limpiar Registros de Hoy</button>
+        <button id="limpiarRegistrosBtn" class="boton-limpiar">Limpiar Hoy</button>
         <div id="log"></div>
     </div>
-    
-    <div id="vista-historial" class="historial-container">
+    <div id="vista-historial" class="vista-container">
         <h3>📅 Historial por días</h3>
         <div id="historial-contenido"></div>
     </div>
-    
-    <div id="vista-horas" class="horas-container">
+    <div id="vista-horas" class="vista-container">
         <h3>⏱️ Distribución de horas (7h 45min)</h3>
-        <p>Estimación automática basada en tareas registradas hoy</p>
         <div id="horas-contenido"></div>
     </div>
-
     <script src="app.js"></script>
 </body>
 </html>
-
