@@ -4,57 +4,255 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Tareas</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#3578e6">
+    <meta name="theme-color" content="#343a40">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-light: #f8f9fa; --text-light: #212529;
+            --bg-dark: #212529; --text-dark: #f8f9fa;
+            --primary: #0d6efd; --danger: #dc3545; --success: #198754; --warning: #ffc107; --info: #0dcaf0;
+            --card-border-light: #dee2e6; --card-border-dark: #495057;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-light); color: var(--text-light);
+            margin: 0; padding: 15px; transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark-mode { background-color: var(--bg-dark); color: var(--text-dark); }
+        .vista-container { display: none; }
+        .vista-container.active { display: block; }
+        #theme-toggle { position: fixed; top: 15px; right: 15px; z-index: 1000; width: 45px; height: 45px; border-radius: 50%; border: none; font-size: 20px; }
+        .modo-toggle button, .filtros-graficas button { border: none; padding: 8px 16px; margin-right: 8px; border-radius: 20px; cursor: pointer; background-color: #6c757d; color: white; }
+        .modo-toggle button.active, .filtros-graficas button.active { background-color: var(--primary); }
+        .puesto { border: 1px solid var(--card-border-light); border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        body.dark-mode .puesto { border-color: var(--card-border-dark); }
+        .puesto-header { display: flex; justify-content: space-between; align-items: center; font-size: 1.2em; font-weight: 600; }
+        .puesto-header button { background: var(--danger); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; font-weight: bold; }
+        .tarea-buttons { margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .tarea-buttons button { background-color: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; font-weight: bold; }
+        .tarea-buttons button.F-P { background-color: var(--success); }
+        .log-entry { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--card-border-light); }
+        body.dark-mode .log-entry { border-bottom-color: var(--card-border-dark); }
+        .log-entry button { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 8px; }
+        .tabla-resumen { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .tabla-resumen th, .tabla-resumen td { border: 1px solid var(--card-border-light); padding: 8px; text-align: center; }
+        body.dark-mode .tabla-resumen th, body.dark-mode .tabla-resumen td { border-color: var(--card-border-dark); }
+        .tabla-resumen th { background-color: #e9ecef; }
+        body.dark-mode .tabla-resumen th { background-color: #343a40; }
+    </style>
 </head>
 <body>
     <button id="theme-toggle">🌙</button>
-    <h2>📋 Registro de tareas</h2>
-    <div class="modo-toggle">
-        <button id="btn-modo-actual" class="boton-limpiar modo-activo">Día Actual</button>
-        <button id="btn-modo-historial" class="boton-historial">Historial</button>
-        <button id="btn-modo-horas" class="boton-horas">Horas</button>
-        <button id="btn-modo-graficas" class="boton-graficas">Gráficas</button>
+    <h2>Registro de Tareas</h2>
+
+    <div class="modo-toggle mb-3">
+        <button data-vista="actual" class="active">Hoy</button>
+        <button data-vista="historial">Historial</button>
+        <button data-vista="horas">Horas</button>
+        <button data-vista="graficas">Gráficas</button>
     </div>
 
-    <div id="vista-actual" class="vista-container">
-        <div class="add-puesto-container">
-            <span>Puesto nº:</span>
-            <input type="number" id="nuevoPuesto" placeholder="23" min="1" max="999">
-            <button id="addPuestoBtn">Añadir</button>
+    <div id="vista-actual" class="vista-container active">
+        <div class="input-group mb-3">
+            <input type="number" id="nuevo-puesto-input" class="form-control" placeholder="Nº de puesto">
+            <button id="add-puesto-btn" class="btn btn-success">Añadir</button>
         </div>
-        <div id="puestosContainer"></div>
-        <div class="dashboard">
-            <h3>📊 Resumen del día</h3>
-            <div id="dashboard-contadores"></div>
-        </div>
-        <h3>Registros de hoy</h3>
-        <button id="limpiarRegistrosBtn" class="boton-limpiar">Limpiar Hoy</button>
-        <div id="log"></div>
+        <div id="puestos-container"></div>
+        <h3 class="mt-4">Resumen Diario</h3>
+        <div id="dashboard-container"></div>
+        <h3 class="mt-4">Registro de Hoy</h3>
+        <button id="clear-today-btn" class="btn btn-danger mb-2">Limpiar Hoy</button>
+        <div id="log-container"></div>
     </div>
 
     <div id="vista-historial" class="vista-container">
-        <h3>📅 Historial por días</h3>
-        <div id="historial-contenido"></div>
+        <h3>Historial Completo</h3>
+        <div id="historial-container"></div>
     </div>
-
+    
     <div id="vista-horas" class="vista-container">
-        <h3>⏱️ Distribución de horas (7h 45min)</h3>
-        <div id="horas-contenido"></div>
+        <h3>Distribución de Horas (7h 45min)</h3>
+        <div id="horas-container"></div>
     </div>
 
     <div id="vista-graficas" class="vista-container">
-        <h3>📈 Análisis de Productividad</h3>
-        <div id="graficas-filtros">
-            <button data-periodo="daily" class="activo">Diario</button>
+        <h3>Análisis de Productividad</h3>
+        <div class="filtros-graficas mb-3">
+            <button data-periodo="daily" class="active">Diario</button>
             <button data-periodo="weekly">Semanal</button>
             <button data-periodo="biweekly">Quincenal</button>
             <button data-periodo="monthly">Mensual</button>
         </div>
-        <canvas id="graficoPuestos"></canvas>
+        <div style="height:400px;"><canvas id="grafico-puestos"></canvas></div>
     </div>
-    <script src="app.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONFIGURACIÓN ---
+            const config = {
+                ordenTareas: ["Flejar+Paquete", "Paquete", "Bobina", "Cuna"],
+                abrev: {"Flejar+Paquete": "F+P", "Paquete": "P", "Bobina": "B", "Cuna": "C"},
+                tiempos: {"Flejar+Paquete": 6, "Paquete": 3, "Bobina": 8, "Cuna": 5},
+                coloresTareas: {"Flejar+Paquete": 'rgba(25, 135, 84, 0.8)', "Paquete": 'rgba(13, 110, 253, 0.8)', "Bobina": 'rgba(255, 193, 7, 0.8)', "Cuna": 'rgba(220, 53, 69, 0.8)'},
+                JORNADA_MINUTOS: 465
+            };
+
+            // --- ESTADO ---
+            let state = {
+                puestos: JSON.parse(localStorage.getItem('puestos') || '[]'),
+                log: JSON.parse(localStorage.getItem('registroTareas') || '[]'),
+                chartInstance: null
+            };
+
+            // --- ELEMENTOS DEL DOM ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const nuevoPuestoInput = document.getElementById('nuevo-puesto-input');
+
+            // --- FUNCIONES DE GUARDADO ---
+            const savePuestos = () => localStorage.setItem('puestos', JSON.stringify(state.puestos));
+            const saveLog = () => localStorage.setItem('registroTareas', JSON.stringify(state.log));
+            
+            // --- RENDERIZADO DE UI ---
+            function renderUI() {
+                renderPuestos();
+                renderDashboard();
+                renderLog();
+            }
+
+            function renderPuestos() {
+                const container = document.getElementById('puestos-container');
+                container.innerHTML = state.puestos.map(p => `
+                    <div class="puesto">
+                        <div class="puesto-header">
+                            <span>Puesto ${p}</span>
+                            <button class="quitar-puesto-btn" data-puesto="${p}">X</button>
+                        </div>
+                        <div class="tarea-buttons">
+                            ${config.ordenTareas.map(t => `<button class="add-tarea-btn ${config.abrev[t].replace('+','-')}" data-puesto="${p}" data-tarea="${t}">${config.abrev[t]}</button>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            function renderDashboard() {
+                const hoy = new Date().toDateString();
+                const logHoy = state.log.filter(l => l.fecha === hoy);
+                const contador = logHoy.reduce((acc, l) => {
+                    if (!acc[l.puesto]) acc[l.puesto] = { total: 0 };
+                    config.ordenTareas.forEach(t => acc[l.puesto][t] = acc[l.puesto][t] || 0);
+                    acc[l.puesto][l.tarea]++;
+                    acc[l.puesto].total++;
+                    return acc;
+                }, {});
+
+                const puestosOrdenados = Object.keys(contador).sort((a,b) => contador[b].total - contador[a].total);
+
+                if (puestosOrdenados.length === 0) {
+                    document.getElementById('dashboard-container').innerHTML = '<p>No hay registros para hoy.</p>';
+                    return;
+                }
+
+                let table = '<table class="tabla-resumen"><thead><tr><th>Puesto</th>';
+                table += config.ordenTareas.map(t => `<th>${config.abrev[t]}</th>`).join('');
+                table += '<th>Total</th></tr></thead><tbody>';
+                puestosOrdenados.forEach(p => {
+                    table += `<tr><td>Puesto ${p}</td>`;
+                    config.ordenTareas.forEach(t => {
+                        table += `<td>${contador[p][t]}</td>`;
+                    });
+                    table += `<td>${contador[p].total}</td></tr>`;
+                });
+                table += '</tbody></table>';
+                document.getElementById('dashboard-container').innerHTML = table;
+            }
+
+            function renderLog() {
+                const hoy = new Date().toDateString();
+                const logHoy = state.log.filter(l => l.fecha === hoy).slice(0, 50);
+                document.getElementById('log-container').innerHTML = logHoy.map(l => `
+                    <div class="log-entry">
+                        <span><strong>Puesto ${l.puesto}</strong> | ${l.hora} | ${config.abrev[l.tarea]}</span>
+                        <button class="eliminar-log-btn" data-id="${l.id}">X</button>
+                    </div>
+                `).join('');
+            }
+
+            // --- LÓGICA DE ACCIONES ---
+            function addPuesto() {
+                const num = nuevoPuestoInput.value.trim();
+                if (num && !state.puestos.includes(num)) {
+                    state.puestos.push(num);
+                    state.puestos.sort((a, b) => parseInt(a) - parseInt(b));
+                    savePuestos();
+                    renderPuestos();
+                }
+                nuevoPuestoInput.value = '';
+            }
+            
+            function addRegistro(puesto, tarea) {
+                const now = new Date();
+                state.log.unshift({
+                    id: Date.now(),
+                    puesto,
+                    tarea,
+                    fecha: now.toDateString(),
+                    hora: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                });
+                saveLog();
+                renderUI();
+            }
+
+            // --- EVENT LISTENERS ---
+            function setupListeners() {
+                themeToggleBtn.addEventListener('click', () => {
+                    document.body.classList.toggle('dark-mode');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+                    localStorage.setItem('theme', isDark ? 'dark-mode' : '');
+                });
+
+                document.querySelector('.modo-toggle').addEventListener('click', e => {
+                    if (e.target.tagName === 'BUTTON') {
+                        const vista = e.target.dataset.vista;
+                        document.querySelectorAll('.vista-container').forEach(v => v.classList.remove('active'));
+                        document.getElementById(`vista-${vista}`).classList.add('active');
+                        document.querySelectorAll('.modo-toggle button').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                    }
+                });
+
+                document.getElementById('add-puesto-btn').addEventListener('click', addPuesto);
+                nuevoPuestoInput.addEventListener('keypress', e => { if (e.key === 'Enter') addPuesto(); });
+
+                document.body.addEventListener('click', e => {
+                    const target = e.target;
+                    if (target.classList.contains('add-tarea-btn')) {
+                        addRegistro(target.dataset.puesto, target.dataset.tarea);
+                    }
+                    if (target.classList.contains('quitar-puesto-btn')) {
+                        // Lógica para quitar puesto
+                    }
+                    if (target.classList.contains('eliminar-log-btn')) {
+                        // Lógica para eliminar log
+                    }
+                });
+            }
+
+            // --- INICIALIZACIÓN ---
+            function init() {
+                // Setear tema inicial
+                if (localStorage.getItem('theme') === 'dark-mode') {
+                    document.body.classList.add('dark-mode');
+                    themeToggleBtn.textContent = '☀️';
+                }
+
+                setupListeners();
+                renderUI();
+            }
+
+            init();
+        });
+    </script>
 </body>
 </html>
